@@ -1,0 +1,1 @@
+# bing-translator-php
