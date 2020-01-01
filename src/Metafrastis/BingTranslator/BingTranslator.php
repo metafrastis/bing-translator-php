@@ -5,6 +5,8 @@ namespace Metafrastis\BingTranslator;
 class BingTranslator {
 
     protected $queue = [];
+    protected $response;
+    protected $responses;
 
     public function translate($args = [], $opts = []) {
         $args['from'] = isset($args['from']) ? $args['from'] : null;
@@ -19,7 +21,7 @@ class BingTranslator {
         if (!$args['text']) {
             return false;
         }
-        $url = 'https://www.bing.com/ttranslate';
+        $url = 'https://www.bing.com/ttranslatev3';
         $headers = [
             'Accept: '.'*'.'/'.'*',
             'Accept-Language: en-US,en;q=0.5',
@@ -28,18 +30,21 @@ class BingTranslator {
             'Referer: https://www.bing.com/translator/',
             'User-Agent: Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:67.0) Gecko/20100101 Firefox/67.0',
         ];
-        $params = ['from' => $args['from'], 'to' => $args['to'], 'text' => $args['text']];
+        $params = ['fromLang' => $args['from'], 'to' => $args['to'], 'text' => $args['text']];
         $options = $opts;
         $queue = isset($args['queue']) ? $args['queue'] : false;
         $response = $this->post($url, $headers, $params, $options, $queue);
+        if (!$queue) {
+            $this->response = $response;
+        }
         if ($queue) {
             return;
         }
         $json = json_decode($response['body'], true);
-        if (!$json || !isset($json['statusCode']) || $json['statusCode'] !== 200 || !isset($json['translationResponse'])) {
+        if (empty($json[0]['translations'][0]['text'])) {
             return false;
         }
-        return $json['translationResponse'];
+        return $json[0]['translations'][0]['text'];
     }
 
     public function detect($args = [], $opts = []) {
@@ -60,6 +65,9 @@ class BingTranslator {
         $options = $opts;
         $queue = isset($args['queue']) ? $args['queue'] : false;
         $response = $this->post($url, $headers, $params, $options, $queue);
+        if (!$queue) {
+            $this->response = $response;
+        }
         if ($queue) {
             return;
         }
@@ -160,8 +168,23 @@ class BingTranslator {
             $error = curl_error($ch);
             $errno = curl_errno($ch);
             curl_close($ch);
+            $response = [
+                'info' => $info,
+                'head' => $head,
+                'body' => $body,
+                'error' => $error,
+                'errno' => $errno,
+            ];
+            $this->responses[$key] = $response;
             $options = $this->queue[$key]['options'];
-            if (strpos($options[CURLOPT_URL], '/ttranslate') !== false) {
+            if (strpos($options[CURLOPT_URL], '/ttranslatev3') !== false) {
+                $json = json_decode($body, true);
+                if (empty($json[0]['translations'][0]['text'])) {
+                    $responses[$key] = false;
+                    continue;
+                }
+                $responses[$key] = $json[0]['translations'][0]['text'];
+            } elseif (strpos($options[CURLOPT_URL], '/ttranslate') !== false) {
                 $json = json_decode($body, true);
                 if (!$json || !isset($json['statusCode']) || $json['statusCode'] !== 200 || !isset($json['translationResponse'])) {
                     $responses[$key] = false;
