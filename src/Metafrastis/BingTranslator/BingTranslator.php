@@ -4,9 +4,9 @@ namespace Metafrastis\BingTranslator;
 
 class BingTranslator {
 
-    protected $queue = [];
-    protected $response;
-    protected $responses;
+    public $queue = [];
+    public $response;
+    public $responses;
 
     public function translate($args = [], $opts = []) {
         $args['from'] = isset($args['from']) ? $args['from'] : null;
