@@ -6,7 +6,7 @@ class BingTranslator {
 
     public $queue = [];
     public $response;
-    public $responses;
+    public $responses = [];
 
     public function translate($args = [], $opts = []) {
         $args['from'] = isset($args['from']) ? $args['from'] : null;
